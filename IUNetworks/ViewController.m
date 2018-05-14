@@ -14,17 +14,16 @@
 
 @interface ViewController ()
 @property (weak, nonatomic) IBOutlet UITableView *infoTableView;
-@property (nonatomic) NSDictionary *globalItemDictionary;
 @property (nonatomic) NSMutableArray *globalItemArray;
+@property (nonatomic) NSArray *sortedDatesArray;
 @end
 
 @implementation ViewController
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.globalItemDictionary = [NSDictionary new];
     self.globalItemArray = [NSMutableArray array];
-    
+    self.sortedDatesArray = [NSArray array];
     [self getresponseWithJSON];
     [self getresponseWithXML];
    
@@ -33,6 +32,13 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self.infoTableView reloadData];
+}
+
+- (void)sortedArrayWithDate {
+    self.sortedDatesArray = [self.globalItemArray sortedArrayUsingComparator: ^(Item *a, Item *b) {
+        
+        return [ b.createdDate compare:a.createdDate ];
+    }];
 }
 
 - (void)getresponseWithJSON {
@@ -47,19 +53,18 @@
                 
                 [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss'Z'"];
                 NSDate *cratedAtDate = [dateFormatter dateFromString:cratedAt];
-                [dateFormatter setDateFormat:@"MM/d/yy HH:mm"];
-                NSString *fromeDateString = [dateFormatter stringFromDate:cratedAtDate];
-                self.globalItemDictionary = @{@"desc":examp[@"description"],
-                                              @"imageUrl":examp[@"urlToImage"],
-                                              @"title":examp[@"title"],
-                                              @"createdDate":fromeDateString,
-                                              @"link":examp[@"url"],
-                                              };
-                [self.globalItemArray addObject: self.globalItemDictionary];
+                
+                Item *item = [[Item alloc] init];
+                item.createdDate = cratedAtDate;
+                item.title = examp[@"title"];
+                item.imageUrl = examp[@"urlToImage"];
+                item.desc = examp[@"description"];
+                item.link = examp[@"url"];
+                [self.globalItemArray addObject: item];
                 
             }
+             [self sortedArrayWithDate];
              [self.infoTableView reloadData];
-            NSLog(@"________%@", self.globalItemArray);
         }else {
             [self showAlertInControllerWithTitle:@"Error"
                                      withMessage:error.description];
@@ -81,19 +86,17 @@
                 
                 [dateFormatter setDateFormat:@"EEE, dd MMM yyyy HH:mm:ss zzz"];
                 NSDate *cratedAtDate = [dateFormatter dateFromString:cratedAt];
-                [dateFormatter setDateFormat:@"MM/d/yy HH:mm"];
-                NSString *fromeDateString = [dateFormatter stringFromDate:cratedAtDate];
-                
                 NSDictionary *exampImageUrl = examp[@"media:thumbnail"];
-                self.globalItemDictionary = @{@"desc":examp[@"description"],
-                                    @"imageUrl":exampImageUrl[@"-url"],
-                                    @"title":examp[@"title"],
-                                    @"createdDate":fromeDateString,
-                                    @"link":examp[@"link"],
-                           };
-                [self.globalItemArray addObject: self.globalItemDictionary];
+                Item *item = [[Item alloc] init];
+                item.createdDate = cratedAtDate;
+                item.title = examp[@"title"];
+                item.imageUrl = exampImageUrl[@"-url"];
+                item.desc = examp[@"description"];
+                item.link = examp[@"link"];
+                [self.globalItemArray addObject: item];
               
             }
+             [self sortedArrayWithDate];
             [self.infoTableView reloadData];
         }else {
             [self showAlertInControllerWithTitle:@"Error"
@@ -165,7 +168,7 @@
     NSData *json = [ NSJSONSerialization dataWithJSONObject :self.globalItemArray options:NSJSONWritingPrettyPrinted error:nil];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         // Generate the file path
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES);
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
         NSString *documentsDirectory = [paths objectAtIndex:0];
         NSString *dataPath = [documentsDirectory stringByAppendingPathComponent:@"MyFIle.json"];
         
@@ -175,10 +178,11 @@
 }
 
 - (void)saveXML {
+
     NSData *XML = [ NSJSONSerialization dataWithJSONObject :self.globalItemArray options:NSJSONWritingPrettyPrinted error:nil];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         // Generate the file path
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
         NSString *documentsDirectory = [paths objectAtIndex:0];
         NSString *dataPath = [documentsDirectory stringByAppendingPathComponent:@"MyFIle.XML"];
         
@@ -190,7 +194,7 @@
 #pragma mark - UITableViewDelegate & UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.globalItemArray.count;
+    return self.sortedDatesArray.count;
     
 }
 
@@ -202,11 +206,14 @@
     if (cell == nil) {
         cell = [[InfoTableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:infoTableViewCell];
     }
-    Item *item = [[Item alloc] initWithDictionary:self.globalItemArray[indexPath.row] error:nil];
+    Item *item = self.sortedDatesArray[indexPath.row];
     [cell.infoImageView sd_setImageWithURL:[NSURL URLWithString:item.imageUrl]];
     cell.infoTitleLabel.text = item.title;
     cell.infoDescriptionLabel.text = item.desc;
-    cell.dates.text = item.createdDate;
+     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
+    [dateFormatter setDateFormat:@"MM/d/yy HH:mm"];
+    NSString *fromeDateString = [dateFormatter stringFromDate:item.createdDate];
+    cell.dates.text = fromeDateString;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     return cell;
     
@@ -218,7 +225,7 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    Item *item = [[Item alloc] initWithDictionary:self.globalItemArray[indexPath.row] error:nil];
+    Item *item = self.sortedDatesArray[indexPath.row];
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString: item.link] options:@{} completionHandler:nil];
 }
 

@@ -13,7 +13,7 @@
 
 @property (nonatomic) NSString<Optional> *desc;
 @property (nonatomic) NSString<Optional> *title;
-@property (nonatomic) NSString<Optional> *createdDate;
+@property (nonatomic) NSDate<Optional> *createdDate;
 @property (nonatomic) NSString<Optional> *link;
 @property (nonatomic) NSString<Optional> *imageUrl;
 
