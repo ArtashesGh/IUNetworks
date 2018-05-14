@@ -26,7 +26,7 @@
     self.sortedDatesArray = [NSArray array];
     [self getresponseWithJSON];
     [self getresponseWithXML];
-   
+    
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -44,7 +44,7 @@
 - (void)getresponseWithJSON {
     [RequestManager getInfoWithJSONCompletion:^(id response, NSError *error) {
         if(!error) {
-           
+            
             NSMutableArray *item = response[@"articles"];;
             for (int i = 0; i< item.count; i++) {
                 NSDictionary *examp = item[i];
@@ -63,8 +63,8 @@
                 [self.globalItemArray addObject: item];
                 
             }
-             [self sortedArrayWithDate];
-             [self.infoTableView reloadData];
+            [self sortedArrayWithDate];
+            [self.infoTableView reloadData];
         }else {
             [self showAlertInControllerWithTitle:@"Error"
                                      withMessage:error.description];
@@ -94,9 +94,9 @@
                 item.desc = examp[@"description"];
                 item.link = examp[@"link"];
                 [self.globalItemArray addObject: item];
-              
+                
             }
-             [self sortedArrayWithDate];
+            [self sortedArrayWithDate];
             [self.infoTableView reloadData];
         }else {
             [self showAlertInControllerWithTitle:@"Error"
@@ -131,7 +131,7 @@
 
 - (IBAction)saveFilesButtonAction:(UIButton *)sender {
     [self saveFileFromJSONOrXML];
-
+    
 }
 
 -(void)saveFileFromJSONOrXML{
@@ -165,7 +165,22 @@
 }
 
 - (void)saveJSON {
-    NSData *json = [ NSJSONSerialization dataWithJSONObject :self.globalItemArray options:NSJSONWritingPrettyPrinted error:nil];
+    NSMutableArray *jsonArray = [NSMutableArray array];
+    for (int i = 0; i < self.sortedDatesArray.count; i++) {
+        Item *items = self.sortedDatesArray[i];
+        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
+        [dateFormatter setDateFormat:@"MM/d/yy HH:mm"];
+        NSString *fromeDateString = [dateFormatter stringFromDate:items.createdDate];
+        NSDictionary *dict = @{@"desc":items.desc,
+                               @"title":items.title,
+                               @"link":items.link,
+                               @"imageUrl":items.imageUrl,
+                               @"createdDate":fromeDateString
+                               };
+        [jsonArray addObject:dict];
+    }
+    NSError *error = nil;
+    NSData *json = [ NSJSONSerialization dataWithJSONObject:jsonArray options:NSJSONWritingPrettyPrinted error:&error];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         // Generate the file path
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
@@ -178,8 +193,22 @@
 }
 
 - (void)saveXML {
-
-    NSData *XML = [ NSJSONSerialization dataWithJSONObject :self.globalItemArray options:NSJSONWritingPrettyPrinted error:nil];
+    NSMutableArray *jsonArray = [NSMutableArray array];
+    for (int i = 0; i < self.sortedDatesArray.count; i++) {
+        Item *items = self.sortedDatesArray[i];
+        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
+        [dateFormatter setDateFormat:@"MM/d/yy HH:mm"];
+        NSString *fromeDateString = [dateFormatter stringFromDate:items.createdDate];
+        NSDictionary *dict = @{@"desc":items.desc,
+                               @"title":items.title,
+                               @"link":items.link,
+                               @"imageUrl":items.imageUrl,
+                               @"createdDate":fromeDateString
+                               };
+        [jsonArray addObject:dict];
+    }
+    NSError *error = nil;
+    NSData *XML = [NSPropertyListSerialization dataWithPropertyList:jsonArray format:NSPropertyListXMLFormat_v1_0 options:0 error:&error];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         // Generate the file path
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
@@ -210,7 +239,7 @@
     [cell.infoImageView sd_setImageWithURL:[NSURL URLWithString:item.imageUrl]];
     cell.infoTitleLabel.text = item.title;
     cell.infoDescriptionLabel.text = item.desc;
-     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
     [dateFormatter setDateFormat:@"MM/d/yy HH:mm"];
     NSString *fromeDateString = [dateFormatter stringFromDate:item.createdDate];
     cell.dates.text = fromeDateString;
